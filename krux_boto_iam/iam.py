@@ -131,7 +131,7 @@ class IAM(object):
 
     def create_user(self, username):
         """
-        Creates user and adds user to given groups. Returns the user as a dict of their attributes.
+        Creates user and returns the user as a dict of their attributes.
         """
         response = self._client.create_user(
             UserName=username
