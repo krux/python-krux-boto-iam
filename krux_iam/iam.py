@@ -84,6 +84,7 @@ class IAM(object):
     """
     A manager to handle all IAM related functions.
     """
+    # TODO: Error handling for methods
 
     def __init__(
         self,
@@ -132,12 +133,7 @@ class IAM(object):
     def create_user(self, username):
         """
         Creates user and returns the user as a dict of their attributes.
-        If the user already exists returns none.
         """
-        if self.get_user(username):
-            self._logger.error('AWS user with username: ' + username + ' already exists.')
-            return None
-
         response = self._client.create_user(
             UserName=username
         )

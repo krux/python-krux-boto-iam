@@ -17,7 +17,7 @@ from pprint import pprint
 
 from krux.cli import get_group
 import krux_boto.cli
-from krux_boto_iam.iam import add_iam_cli_arguments, get_iam, NAME, IAM
+from krux_iam.iam import add_iam_cli_arguments, get_iam, NAME, IAM
 
 
 class Application(krux_boto.cli.Application):
