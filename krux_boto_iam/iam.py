@@ -132,7 +132,12 @@ class IAM(object):
     def create_user(self, username):
         """
         Creates user and returns the user as a dict of their attributes.
+        If the user already exists returns none.
         """
+        if self.get_user(username):
+            self._logger.error('AWS user with username: ' + username + ' already exists.')
+            return None
+
         response = self._client.create_user(
             UserName=username
         )
@@ -145,7 +150,7 @@ class IAM(object):
         all their access keys.
         """
         for group in self.get_groups(username):
-            self.delete_user_from_group(username, group)
+            self.delete_user_from_group(username, group['GroupName'])
 
         for key in self.get_access_keys(username):
             self.delete_access_key(username, key['AccessKeyId'])
@@ -156,31 +161,33 @@ class IAM(object):
 
     def get_user(self, username):
         """
-        Gets the given user and upon failure returns None.
+        Gets the given user and upon failure returns None. Otherwise returns
+        a dict of the user's attributes.
         """
         try:
             response = self._client.get_user(
                 UserName=username
             )
-            return response
+            return response['User']
         except botocore.exceptions.ClientError:
             return None
 
     def add_user_to_group(self, username, group):
         """
-        Adds given user to the given group.
+        Adds given user to the given group. Throws a botocore.exceptions.ClientError
+        exception if the given group doesn't exist.
         """
         self._client.add_user_to_group(
             GroupName=group,
             UserName=username
         )
 
-    def delete_user_from_group(self, username, group):
+    def delete_user_from_group(self, username, group_name):
         """
         Deletes the user from the given group.
         """
         self._client.remove_user_from_group(
-            GroupName=group['GroupName'],
+            GroupName=group_name,
             UserName=username
         )
 

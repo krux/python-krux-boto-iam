@@ -35,6 +35,7 @@ class Application(krux_boto.cli.Application):
         add_iam_cli_arguments(parser, include_boto_arguments=False)
 
     def run(self):
+        # Basic check to get user
         pprint(self.iam.get_user('phan'))
 
 
