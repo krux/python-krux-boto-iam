@@ -111,6 +111,9 @@ class IAM(object):
         return key['AccessKeyId'], key['SecretAccessKey']
 
     def get_access_keys(self, username):
+        """
+        Gets all access keys for a given user. Returns a list of dicts representing access keys.
+        """
         response = self._client.list_access_keys(
             UserName=username
         )
@@ -128,7 +131,7 @@ class IAM(object):
 
     def create_user(self, username):
         """
-        Creates user and adds user to given groups. Returns the user's access keys.
+        Creates user and adds user to given groups. Returns the user as a dict of their attributes.
         """
         response = self._client.create_user(
             UserName=username
@@ -139,7 +142,7 @@ class IAM(object):
     def delete_user(self, username):
         """
         Deletes user and removes user from any groups they belong to and deletes
-        all their access keys
+        all their access keys.
         """
         for group in self.get_groups(username):
             self.delete_user_from_group(username, group)
@@ -153,7 +156,7 @@ class IAM(object):
 
     def get_user(self, username):
         """
-        Gets the given user (given their username) and upon failure returns None
+        Gets the given user and upon failure returns None.
         """
         try:
             response = self._client.get_user(
@@ -164,18 +167,28 @@ class IAM(object):
             return None
 
     def add_user_to_group(self, username, group):
+        """
+        Adds given user to the given group.
+        """
         self._client.add_user_to_group(
             GroupName=group,
             UserName=username
         )
 
     def delete_user_from_group(self, username, group):
+        """
+        Deletes the user from the given group.
+        """
         self._client.remove_user_from_group(
             GroupName=group['GroupName'],
             UserName=username
         )
 
     def get_groups(self, username):
+        """
+        Gets all the groups the current user belongs to.
+        Returns a list of dicts representing each group.
+        """
         response = self._client.list_groups_for_user(
             UserName=username
         )
