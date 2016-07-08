@@ -162,8 +162,9 @@ class IAM(object):
             response = self._client.get_user(
                 UserName=username
             )
-            return response
-        except botocore.exceptions.ClientError:
+            return response['User']
+        except botocore.exceptions.ClientError as e:
+            self._logger.error(e)
             return None
 
     def add_user_to_group(self, username, group):
