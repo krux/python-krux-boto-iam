@@ -99,7 +99,7 @@ class IAM(object):
         # Private client representing IAM
         self._client = boto.client('iam')
 
-    def create_access_key(self, username):
+    def create_access_keys(self, username):
         """
         Creates and returns an AWS access key and secret key for the given user.
         """
