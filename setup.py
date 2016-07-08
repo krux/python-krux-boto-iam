@@ -34,6 +34,7 @@ setup(
     install_requires = [],
     entry_points     = {
         'console_scripts': [
+            'krux-iam-test = krux_boto_iam.cli:main',
         ],
     },
 )
