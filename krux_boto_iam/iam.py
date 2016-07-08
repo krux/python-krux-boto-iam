@@ -120,13 +120,13 @@ class IAM(object):
 
         return response['AccessKeyMetadata']
 
-    def delete_access_keys(self, username):
+    def delete_access_key(self, username, key_id):
         """
-        Deletes any access keys associated with the given user.
+        Deletes the access key associated with the given user.
         """
         self._client.delete_access_key(
             UserName=username,
-            AccessKeyId=key['AccessKeyId']
+            AccessKeyId=key_id
         )
 
     def create_user(self, username):
