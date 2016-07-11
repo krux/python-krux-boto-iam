@@ -3,7 +3,7 @@
 krux-boto==1.0.3
 
 # From krux-boto
-krux-stdlib==2.1.1
+krux-stdlib==2.2.1
 boto==2.39.0
 boto3==1.2.3
 pystache==0.5.4
