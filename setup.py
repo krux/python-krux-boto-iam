@@ -21,7 +21,7 @@ DOWNLOAD_URL = ''.join((REPO_URL, '/tarball/release/', VERSION))
 
 ### XXX these all need to be in sub dirs, or it won't work :(
 setup(
-    name             = 'krux-boto-iam',
+    name             = 'krux-iam',
     version          = VERSION,
     author           = 'Kelsey Lam',
     author_email     = 'klam@krux.com',
@@ -34,6 +34,7 @@ setup(
     install_requires = [],
     entry_points     = {
         'console_scripts': [
+            'krux-iam-test = krux_iam.cli:main',
         ],
     },
 )
