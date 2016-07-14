@@ -84,7 +84,9 @@ class IAM(object):
     """
     A manager to handle all IAM related functions.
     """
-    # TODO: Error handling for methods
+    ### TODO: Error handling for methods
+
+    _IAM_STR = 'iam'
 
     def __init__(
         self,
@@ -98,7 +100,7 @@ class IAM(object):
         self._stats = stats or get_stats(prefix=self._name)
 
         # Private client representing IAM
-        self._client = boto.client('iam')
+        self._client = boto.client(IAM._IAM_STR)
 
     def create_access_keys(self, username):
         """
