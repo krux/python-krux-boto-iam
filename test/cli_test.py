@@ -21,7 +21,7 @@ from mock import MagicMock, patch
 # Internal libraries
 #
 
-from krux_boto_iam.cli import Application, NAME, main
+from krux_iam.cli import Application, NAME, main
 from krux.stats import DummyStatsClient
 
 
@@ -34,7 +34,7 @@ class CLItest(unittest.TestCase):
         self.app = Application()
         self.app.logger = MagicMock()
 
-    @patch('krux_boto_iam.cli.get_iam')
+    @patch('krux_iam.cli.get_iam')
     def test_init(self, mock_get_iam):
         """
         IAM CLI Application is initialized properly
@@ -51,8 +51,8 @@ class CLItest(unittest.TestCase):
 
         mock_get_iam.assert_called_once_with(app.args, app.logger, app.stats)
 
-    @patch('krux_boto_iam.cli.pprint')
-    @patch('krux_boto_iam.cli.IAM.get_user', return_value=USER_DATA)
+    @patch('krux_iam.cli.pprint')
+    @patch('krux_iam.cli.IAM.get_user', return_value=USER_DATA)
     def test_run(self, mock_get_user, mock_pprint):
         """
         Test IAM CLI Application run
@@ -69,7 +69,7 @@ class CLItest(unittest.TestCase):
         app = MagicMock()
         app_class = MagicMock(return_value=app)
 
-        with patch('krux_boto_iam.cli.Application', app_class):
+        with patch('krux_iam.cli.Application', app_class):
             main()
 
         app_class.assert_called_once_with()

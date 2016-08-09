@@ -11,68 +11,248 @@ from __future__ import absolute_import
 import unittest
 
 #
+# Third party libraries
+#
+
+from mock import MagicMock, patch
+import botocore
+
+#
 # Internal libraries
 #
 
 import krux_boto.boto
-from krux_boto_iam.iam import IAM, get_iam, NAME
+from krux_iam.iam import IAM, get_iam, NAME, add_iam_cli_arguments
 
 
 class IAMtest(unittest.TestCase):
     TEST_REGION = 'us-west-2'
-    TEST_QUEUE_NAME = 'klam-test'
+    TEST_USER = 'jdoe'
+    ACCESS_KEY = '123'
+    SECRET_KEY = 'ABC'
+    KEY_DICT = {'AccessKeyId': ACCESS_KEY, 'SecretAccessKey': SECRET_KEY}
+    CREATE_KEY_RESPONSE = {'AccessKey': KEY_DICT}
+    GET_KEY_RESPONSE = {'AccessKeyMetadata': [KEY_DICT]}
+    USER_RESPONSE = {'User': {'UserName': TEST_USER}}
 
-    @patch('krux_boto_iam.iam.get_stats')
-    @patch('krux_boto_iam.iam.get_logger')
+    @patch('krux_iam.iam.get_stats')
+    @patch('krux_iam.iam.get_logger')
     def setUp(self, mock_logger, mock_stats):
-        self.logger = mock_logger
-        self.stats = mock_stats
-        self.iam = krux_boto_iam.iam.IAM(
-            boto=krux_boto.boto.Boto3(
-                region=self.TEST_REGION
-            ),
+        self.logger = mock_logger()
+        self.stats = mock_stats()
+        self.boto = krux_boto.boto.Boto3(region=self.TEST_REGION)
+        self.boto.client = MagicMock()
+        self.iam = IAM(
+            boto=self.boto,
             logger=self.logger,
             stats=self.stats
         )
 
     def test_init(self):
-        self.assertIn(NAME, iam._name)
-        self.assertEqual(self.mock_logger, self.iam._logger)
-        self.assertEqual(self.mock_stats, self.iam._stats)
+        """
+        Tests IAM init with logger and stats passed in
+        """
+        self.assertIn(NAME, self.iam._name)
+        self.assertEqual(self.logger, self.iam._logger)
+        self.assertEqual(self.stats, self.iam._stats)
+        self.assertEqual(self.boto.client.return_value, self.iam._client)
 
-    def test_empty_init(self):
+    @patch('krux_iam.iam.get_stats')
+    @patch('krux_iam.iam.get_logger')
+    def test_empty_init(self, mock_logger, mock_stats):
         """
-        Kafka Manager API Test: Checks if KafkaManagerAPI initialized property if all user
-        inputs provided.
+        Test IAM init with no logger or stats passed in
         """
-        iam = IAM(KafkaManagerTest._HOSTNAME, self.mock_logger, self.mock_stats)
+        boto = krux_boto.boto.Boto3(region=self.TEST_REGION)
+        boto.client = MagicMock()
+        iam = IAM(boto=boto)
+
         self.assertIn(NAME, iam._name)
-        self.assertEqual(self.mock_logger, iam._logger)
-        self.assertEqual(self.mock_stats, iam._stats)
+
+        mock_logger.assert_called_once_with(NAME)
+        mock_stats.assert_called_once_with(prefix=NAME)
+        self.assertEqual(mock_logger.return_value, iam._logger)
+        self.assertEqual(mock_stats.return_value, iam._stats)
+
+        boto.client.assert_called_once_with(IAM._IAM_STR)
+        self.assertEqual(boto.client.return_value, iam._client)
+
+    @patch('krux_iam.iam.Boto3')
+    @patch('krux_iam.iam.IAM')
+    @patch('krux_iam.iam.add_iam_cli_arguments')
+    @patch('krux_iam.iam.get_parser')
+    @patch('krux_iam.iam.get_stats')
+    @patch('krux_iam.iam.get_logger')
+    def test_get_iam_none(self, mock_logger, mock_stats, mock_parser, mock_add_args, mock_iam, mock_boto):
+        """
+        Test get_iam when no arguments are passed in
+        """
+        parser = MagicMock()
+        mock_parser.return_value = parser
+        args = MagicMock()
+        parser.parse_args.return_value = args
+
+        iam = get_iam()
+
+        mock_parser.assert_called_once_with(description=NAME)
+        mock_add_args.assert_called_once_with(parser)
+        parser.parse_args.assert_called_once_with()
+
+        mock_logger.assert_called_once_with(name=NAME)
+        mock_stats.assert_called_once_with(prefix=NAME)
+
+        mock_boto.assert_called_once_with(
+            log_level=args.boto_log_level,
+            access_key=args.boto_access_key,
+            secret_key=args.boto_secret_key,
+            region=args.boto_region,
+            logger=mock_logger.return_value,
+            stats=mock_stats.return_value,
+        )
+
+        mock_iam.assert_called_once_with(
+            boto=mock_boto.return_value,
+            logger=mock_logger.return_value,
+            stats=mock_stats.return_value
+        )
+        self.assertEquals(mock_iam.return_value, iam)
+
+    @patch('krux_iam.iam.Boto3')
+    @patch('krux_iam.iam.IAM')
+    @patch('krux_iam.iam.add_iam_cli_arguments')
+    @patch('krux_iam.iam.get_parser')
+    @patch('krux_iam.iam.get_stats')
+    @patch('krux_iam.iam.get_logger')
+    def test_get_iam_all(self, mock_logger, mock_stats, mock_parser, mock_add_args, mock_iam, mock_boto):
+        """
+        Test get_iam when all arguments are passed in
+        """
+        parser = MagicMock()
+        mock_parser.return_value = parser
+        args = MagicMock()
+        logger = MagicMock()
+        stats = MagicMock()
+
+        iam = get_iam(args=args, logger=logger, stats=stats)
+
+        self.assertFalse(mock_parser.called)
+        self.assertFalse(mock_add_args.called)
+        self.assertFalse(parser.parse_args.called)
+
+        self.assertFalse(mock_logger.called)
+        self.assertFalse(mock_stats.called)
+
+        mock_boto.assert_called_once_with(
+            log_level=args.boto_log_level,
+            access_key=args.boto_access_key,
+            secret_key=args.boto_secret_key,
+            region=args.boto_region,
+            logger=logger,
+            stats=stats,
+        )
+
+        mock_iam.assert_called_once_with(
+            boto=mock_boto.return_value,
+            logger=logger,
+            stats=stats
+        )
+
+    @patch('krux_iam.iam.get_group')
+    @patch('krux_iam.iam.add_boto_cli_arguments')
+    def test_get_cli_arguments(self, mock_add_boto, mock_get_group):
+        """
+        Test add_iam_cli_arguments
+        """
+        parser = MagicMock()
+
+        add_iam_cli_arguments(parser)
+
+        mock_add_boto.assert_called_once_with(parser)
+        mock_get_group.assert_called_once_with(parser, NAME)
+
+    @patch('krux_iam.iam.get_group')
+    @patch('krux_iam.iam.add_boto_cli_arguments')
+    def test_get_cli_arguments_no_boto(self, mock_add_boto, mock_get_group):
+        """
+        Test add_iam_cli_arguments with include_boto_arguments = False
+        """
+        parser = MagicMock()
+
+        add_iam_cli_arguments(parser, False)
+
+        self.assertFalse(mock_add_boto.called)
+
+    def test_create_access_keys(self):
+        """
+        Test that create_access_keys calls client.create_access_key and returns an access key and secret key
+        """
+        self.iam._client.create_access_key = MagicMock(return_value=self.CREATE_KEY_RESPONSE)
+
+        access_key, secret_key = self.iam.create_access_keys(self.TEST_USER)
+
+        self.iam._client.create_access_key.assert_called_once_with(UserName=self.TEST_USER)
+        self.assertEquals(self.ACCESS_KEY, access_key)
+        self.assertEquals(self.SECRET_KEY, secret_key)
+
+    def test_get_access_keys(self):
+        """
+        Test that get_access_keys calls client.list_access_keys and returns a list of dicts with access keys
+        """
+        self.iam._client.list_access_keys = MagicMock(return_value=self.GET_KEY_RESPONSE)
+
+        keys = self.iam.get_access_keys(self.TEST_USER)
+
+        self.iam._client.list_access_keys.assert_called_once_with(UserName=self.TEST_USER)
+        self.assertEquals(self.GET_KEY_RESPONSE['AccessKeyMetadata'], keys)
+
+    def test_delete_access_key(self):
+        """
+        Test that checks if client.delete_access_key is called correctly
+        """
+        self.iam.delete_access_key(self.TEST_USER, self.ACCESS_KEY)
+
+        self.iam._client.delete_access_key.assert_called_once_with(
+            UserName=self.TEST_USER,
+            AccessKeyId=self.ACCESS_KEY
+        )
 
     def test_create_user(self):
         """
-        AWS user with given username is created correctly
+        Test that checks if client.create_user is called correctly and create_user returns a user dict
         """
-        # TODO: This test needs to be improved using mock and stuff. But for the interest of time,
-        # let's leave it at this minimal state.
-        user = self.iam.create_user('hworld')
+        self.iam._client.create_user = MagicMock(return_value=self.USER_RESPONSE)
 
-        self.assertIsNotNone(user)
-        self.assertEqual('hworld', user['UserName'])
+        user = self.iam.create_user(self.TEST_USER)
 
-        user = self.iam.get_user('hworld')
+        self.iam._client.create_user.assert_called_once_with(UserName=self.TEST_USER)
+        self.assertEquals(self.USER_RESPONSE['User'], user)
 
-        self.assertIsNotNone(user)
-        self.assertEqual('hworld', user['UserName'])
+    # def test_delete_user(self):
+    #     """
+    #     Test that checks if user is deleted successfully.
+    #     Checks if get groups, delete_user_from group, get_keys, delete_keys, and delete_user are called.
+    #     """
+    #     self.iam.delete_user('hworld')
+    #     user = self.iam.get_user('hworld')
 
-    def test_delete_user(self):
+    def test_get_user(self):
         """
-        AWS user can be deleted.
+        Test that checks if client.get_user is called correctly and get_user returns a user dict
         """
-        # TODO: This test needs to be improved using mock and stuff. But for the interest of time,
-        # let's leave it at this minimal state.
-        self.iam.delete_user('hworld')
-        user = self.iam.get_user('hworld')
+        self.iam._client.get_user = MagicMock(return_value=self.USER_RESPONSE)
 
-        self.assertIsNone(user)
+        user = self.iam.get_user(self.TEST_USER)
+
+        self.iam._client.get_user.assert_called_once_with(UserName=self.TEST_USER)
+        self.assertEquals(self.USER_RESPONSE['User'], user)
+
+    def test_get_user_error(self):
+        """
+        Test that checks if client.get_user is called correctly and get_user returns a user dict
+        """
+        self.iam._client.get_user = MagicMock(side_effect=botocore.exceptions.ClientError('error', 404))
+
+        user = self.iam.get_user(self.TEST_USER)
+
+        self.assertTrue(self.iam._client.get_user.called)
+        self.assertEquals(None, user)
