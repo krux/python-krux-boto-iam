@@ -14,7 +14,7 @@ import unittest
 # Third party libraries
 #
 
-from mock import MagicMock, patch
+from mock import MagicMock, patch, call
 import botocore
 
 #
@@ -28,12 +28,15 @@ from krux_iam.iam import IAM, get_iam, NAME, add_iam_cli_arguments
 class IAMtest(unittest.TestCase):
     TEST_REGION = 'us-west-2'
     TEST_USER = 'jdoe'
+    TEST_GROUP = 'krux-test'
     ACCESS_KEY = '123'
     SECRET_KEY = 'ABC'
     KEY_DICT = {'AccessKeyId': ACCESS_KEY, 'SecretAccessKey': SECRET_KEY}
     CREATE_KEY_RESPONSE = {'AccessKey': KEY_DICT}
     GET_KEY_RESPONSE = {'AccessKeyMetadata': [KEY_DICT]}
     USER_RESPONSE = {'User': {'UserName': TEST_USER}}
+    GROUPS_RESPONSE = {'Groups': [{'GroupName': 'group1'}, {'GroupName': 'group2'}, {'GroupName': 'group3'}]}
+    KEY_LIST = [{'AccessKeyId': '123'}, {'AccessKeyId': '456'}, {'AccessKeyId': '789'}]
     ERROR_DICT = {'Error': {}}
 
     @patch('krux_iam.iam.get_stats')
@@ -228,13 +231,32 @@ class IAMtest(unittest.TestCase):
         self.iam._client.create_user.assert_called_once_with(UserName=self.TEST_USER)
         self.assertEquals(self.USER_RESPONSE['User'], user)
 
-    # def test_delete_user(self):
-    #     """
-    #     Test that checks if user is deleted successfully.
-    #     Checks if get groups, delete_user_from group, get_keys, delete_keys, and delete_user are called.
-    #     """
-    #     self.iam.delete_user('hworld')
-    #     user = self.iam.get_user('hworld')
+    @patch('krux_iam.iam.IAM.delete_access_key')
+    @patch('krux_iam.iam.IAM.get_access_keys', return_value=KEY_LIST)
+    @patch('krux_iam.iam.IAM.delete_user_from_group')
+    @patch('krux_iam.iam.IAM.get_groups', return_value=GROUPS_RESPONSE['Groups'])
+    def test_delete_user(self, mock_get_groups, mock_delete_from_group, mock_get_keys, mock_delete_keys):
+        """
+        Test that checks if user is deleted successfully.
+        Checks if get groups, delete_user_from group, get_keys, delete_keys, and delete_user are called.
+        """
+        self.iam.delete_user(self.TEST_USER)
+
+        mock_get_groups.assert_called_once_with(self.TEST_USER)
+        groups = mock_get_groups.return_value
+        calls = []
+        for group in groups:
+            calls.append(call(self.TEST_USER, group['GroupName']))
+        mock_delete_from_group.assert_has_calls(calls)
+
+        mock_get_keys.assert_called_once_with(self.TEST_USER)
+        keys = mock_get_keys.return_value
+        calls = []
+        for key in keys:
+            calls.append(call(self.TEST_USER, key['AccessKeyId']))
+        mock_delete_keys.assert_has_calls(calls)
+
+        self.iam._client.delete_user.assert_called_once_with(UserName=self.TEST_USER)
 
     def test_get_user(self):
         """
@@ -249,7 +271,7 @@ class IAMtest(unittest.TestCase):
 
     def test_get_user_error(self):
         """
-        Test that checks if client.get_user is called correctly and get_user returns a user dict
+        Test that checks when client.get_user throws an error, if it's handled properly
         """
         self.iam._client.get_user = MagicMock(side_effect=botocore.exceptions.ClientError(self.ERROR_DICT, 'error'))
 
@@ -262,3 +284,25 @@ class IAMtest(unittest.TestCase):
         """
         Test that checks if client.add_user_to_group is called correctly
         """
+        self.iam.add_user_to_group(self.TEST_USER, self.TEST_GROUP)
+
+        self.iam._client.add_user_to_group.assert_called_once_with(GroupName=self.TEST_GROUP, UserName=self.TEST_USER)
+
+    def test_delete_user_from_group(self):
+        """
+        Test that checks if client.remove_user_from_group is called correctly
+        """
+        self.iam.delete_user_from_group(self.TEST_USER, self.TEST_GROUP)
+
+        self.iam._client.remove_user_from_group.assert_called_once_with(GroupName=self.TEST_GROUP, UserName=self.TEST_USER)
+
+    def test_get_groups(self):
+        """
+        Test that checks if client.list_groups_for_user is called correctly and a list of dictionaries is returned
+        """
+        self.iam._client.list_groups_for_user = MagicMock(return_value=self.GROUPS_RESPONSE)
+
+        groups = self.iam.get_groups(self.TEST_USER)
+
+        self.iam._client.list_groups_for_user.assert_called_once_with(UserName=self.TEST_USER)
+        self.assertEquals(self.GROUPS_RESPONSE['Groups'], groups)
