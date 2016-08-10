@@ -34,6 +34,7 @@ class IAMtest(unittest.TestCase):
     CREATE_KEY_RESPONSE = {'AccessKey': KEY_DICT}
     GET_KEY_RESPONSE = {'AccessKeyMetadata': [KEY_DICT]}
     USER_RESPONSE = {'User': {'UserName': TEST_USER}}
+    ERROR_DICT = {'Error': {}}
 
     @patch('krux_iam.iam.get_stats')
     @patch('krux_iam.iam.get_logger')
@@ -250,9 +251,14 @@ class IAMtest(unittest.TestCase):
         """
         Test that checks if client.get_user is called correctly and get_user returns a user dict
         """
-        self.iam._client.get_user = MagicMock(side_effect=botocore.exceptions.ClientError('error', 404))
+        self.iam._client.get_user = MagicMock(side_effect=botocore.exceptions.ClientError(self.ERROR_DICT, 'error'))
 
         user = self.iam.get_user(self.TEST_USER)
 
         self.assertTrue(self.iam._client.get_user.called)
         self.assertEquals(None, user)
+
+    def test_add_user_to_group(self):
+        """
+        Test that checks if client.add_user_to_group is called correctly
+        """
