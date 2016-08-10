@@ -247,14 +247,18 @@ class IAMtest(unittest.TestCase):
         calls = []
         for group in groups:
             calls.append(call(self.TEST_USER, group['GroupName']))
+
         mock_delete_from_group.assert_has_calls(calls)
+        self.assertEquals(len(groups), mock_delete_from_group.call_count)
 
         mock_get_keys.assert_called_once_with(self.TEST_USER)
         keys = mock_get_keys.return_value
         calls = []
         for key in keys:
             calls.append(call(self.TEST_USER, key['AccessKeyId']))
+
         mock_delete_keys.assert_has_calls(calls)
+        self.assertEquals(len(keys), mock_delete_keys.call_count)
 
         self.iam._client.delete_user.assert_called_once_with(UserName=self.TEST_USER)
 
